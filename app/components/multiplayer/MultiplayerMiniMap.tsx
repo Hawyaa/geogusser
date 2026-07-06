@@ -99,7 +99,7 @@ export default function MultiplayerMiniMap({
         zoom: 4.5,
         pitch: 50,
         bearing: 0,
-        antialias: true,
+        // antialias: 
       });
       mapRef.current = map;
       map.addControl(new maplibre.NavigationControl(), "top-right");
