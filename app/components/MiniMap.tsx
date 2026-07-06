@@ -31,7 +31,7 @@ export default function MiniMap({ onGuess, disabled = false }: MiniMapProps) {
         zoom: 4.5,
         pitch: 50,
         bearing: 0,
-        antialias: true,
+        // antialias: true,
       });
       mapRef.current = map;
       map.addControl(new maplibre.NavigationControl(), "top-right");
