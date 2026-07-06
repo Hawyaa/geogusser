@@ -1,7 +1,7 @@
 ﻿"use client";
 import { useEffect, useRef, useState } from "react";
-import { Location } from "@/types/game";
-
+// import { Location } from "@/types/game";
+import { Location } from "@/lib/locations";
 const TOKEN = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN || "";
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
