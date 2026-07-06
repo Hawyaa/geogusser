@@ -1,0 +1,77 @@
+// ============================================================
+// firestore.rules — Security Rules
+// ============================================================
+// Deploy with: firebase deploy --only firestore:rules
+//
+// Architecture: NO Firebase Auth, NO Cloud Functions.
+// Trust boundary = anonymous client-generated player IDs
+// (actual format from app/lib/room.ts getOrCreatePlayerId:
+// "p_" + random base36 (8 chars) + Date.now() base36 — NO second
+// underscore, both segments are mixed alphanumeric. Stored in
+// localStorage so it survives refresh.)
+//
+// This is intentionally permissive — good enough for friends
+// playing together with a shared room code, NOT safe for a
+// public product where strangers might grief each other's rooms.
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidPlayerId(id) {
+      return id.matches('p_[a-z0-9]+');
+    }
+
+    match /rooms/{roomId} {
+
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll([
+        'roomId', 'hostId', 'phase', 'currentRound',
+        'totalRounds', 'roundDurationSeconds', 'createdAt', 'updatedAt'
+      ]) && isValidPlayerId(request.resource.data.hostId);
+
+      allow update: if exists(/databases/$(database)/documents/rooms/$(roomId))
+        && resource.data.hostId == request.resource.data.hostId;
+
+      allow delete: if false;
+
+      match /players/{playerId} {
+        allow read: if true;
+        allow write: if playerId == request.resource.data.playerId
+          && isValidPlayerId(playerId);
+        allow delete: if false;
+      }
+
+      match /rounds/{roundNumber} {
+        allow read: if true;
+        allow create: if isValidPlayerId(request.resource.data.get('createdBy', ''));
+        allow update: if isValidPlayerId(request.resource.data.get('createdBy', ''));
+        allow delete: if false;
+
+        match /guesses/{playerId} {
+          allow read: if true;
+          allow create: if playerId == request.resource.data.playerId
+            && isValidPlayerId(playerId);
+          allow update: if playerId == resource.data.playerId
+            && isValidPlayerId(playerId)
+            && request.resource.data.playerId == resource.data.playerId;
+          allow delete: if false;
+        }
+      }
+    }
+
+    match /profiles/{deviceId} {
+      allow read: if true;
+      allow write: if isValidPlayerId(deviceId);
+      allow delete: if false;
+    }
+  }
+  // ── Collection group query for live player count ────────
+    // Allows getCountFromServer() across all players subcollections
+    // (used by liveStats.ts getActivePlayerCount). Read-only.
+    match /{path=**}/players/{playerId} {
+      allow read: if true;
+    }
+}
