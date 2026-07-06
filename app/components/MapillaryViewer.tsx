@@ -1,7 +1,13 @@
 ﻿"use client";
 import { useEffect, useRef, useState } from "react";
-// import { Location } from "@/types/game";
-import { Location } from "@/lib/locations";
+
+interface ViewerLocation {
+  lat: number;
+  lng: number;
+  city?: string;
+  country?: string;
+}
+
 const TOKEN = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN || "";
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
@@ -44,7 +50,7 @@ function lngLatToTile(lng: number, lat: number, zoom: number) {
   return { x, y };
 }
 
-export default function MapillaryViewer({ location }: { location: Location }) {
+export default function MapillaryViewer({ location }: { location: ViewerLocation }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +115,7 @@ export default function MapillaryViewer({ location }: { location: Location }) {
     return results.flat();
   }
 
-  async function run(loc: Location) {
+  async function run(loc: ViewerLocation) {
     if (!TOKEN) {
       setError(true);
       setLoading(false);
