@@ -90,3 +90,17 @@ export interface LeaderboardEntry {
   distanceKm: number | null;
   rank: number;
 }
+
+// ─── Single-player round result (client-side, local game mode) ────────────────
+export interface RoundResult {
+  score: number;
+  distanceKm: number;
+  correctLocation: {
+    lat: number;
+    lng: number;
+    country: string;
+    city?: string;
+  };
+  guessLocation: LatLng | null;
+  timeTaken: number;
+}
