@@ -31,7 +31,6 @@ export default function MiniMap({ onGuess, disabled = false }: MiniMapProps) {
         zoom: 4.5,
         pitch: 50,
         bearing: 0,
-        // antialias: true,
       });
       mapRef.current = map;
       map.addControl(new maplibre.NavigationControl(), "top-right");
@@ -42,6 +41,8 @@ export default function MiniMap({ onGuess, disabled = false }: MiniMapProps) {
           tileSize: 256,
         });
         map.setTerrain({ source: "terrain", exaggeration: 2 });
+        // make sure it's sized correctly right after load too
+        map.resize();
       });
       map.on("click", (e: any) => {
         if (disabled) return;
@@ -50,16 +51,29 @@ export default function MiniMap({ onGuess, disabled = false }: MiniMapProps) {
           markerRef.current.setLngLat([lng, lat]);
         } else {
           const el = document.createElement("div");
-          el.style.cssText = "width:22px;height:22px;background:#22c55e;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.6);";
+          el.style.cssText =
+            "width:22px;height:22px;background:#22c55e;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.6);";
           markerRef.current = new (maplibre as any).Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
         }
         setGuessPlaced(true);
         onGuess({ lat, lng });
       });
+
+      // Keep the canvas correctly sized whenever the container changes size
+      // (expand/shrink toggle, orientation change, window resize, etc.)
+      const resizeObserver = new ResizeObserver(() => {
+        map.resize();
+      });
+      resizeObserver.observe(containerRef.current!);
+      (map as any)._roCleanup = () => resizeObserver.disconnect();
     };
     init();
     return () => {
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      if (mapRef.current) {
+        (mapRef.current as any)._roCleanup?.();
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
       markerRef.current = null;
       setGuessPlaced(false);
     };
@@ -71,12 +85,12 @@ export default function MiniMap({ onGuess, disabled = false }: MiniMapProps) {
     <div className="relative w-full h-full rounded-xl overflow-hidden shadow-2xl border border-gray-700">
       <div ref={containerRef} className="w-full h-full" />
       {!guessPlaced && !disabled && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full pointer-events-none whitespace-nowrap">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full pointer-events-none whitespace-nowrap max-w-[90%] text-center">
           🌍 Click to guess • Right-click drag to tilt 3D
         </div>
       )}
       {guessPlaced && !disabled && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-green-600/90 text-white text-xs px-3 py-1.5 rounded-full pointer-events-none whitespace-nowrap">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-green-600/90 text-white text-[10px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full pointer-events-none whitespace-nowrap">
           ✅ Guess placed!
         </div>
       )}

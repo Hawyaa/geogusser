@@ -127,8 +127,16 @@ export default function GameScreen() {
         </div>
       </div>
 
-      {/* Mini map bottom right */}
-      <div className={`absolute z-30 transition-all duration-300 ease-in-out ${mapExpanded ? "bottom-4 right-4 w-[520px] h-[420px]" : "bottom-4 right-4 w-[280px] h-[200px]"}`}>
+      {/* Mini map bottom right — responsive size + fades out a bit when shrunk */}
+      <div
+        className={`absolute z-30 transition-all duration-300 ease-in-out bottom-3 right-3 sm:bottom-4 sm:right-4 ${
+          mapExpanded ? "opacity-100" : "opacity-60 hover:opacity-95"
+        }`}
+        style={{
+          width: mapExpanded ? "min(90vw, 520px)" : "min(55vw, 280px)",
+          height: mapExpanded ? "min(60vh, 420px)" : "min(35vh, 200px)",
+        }}
+      >
         <button
           onClick={() => setMapExpanded((v) => !v)}
           className="absolute top-2 left-2 z-10 bg-black/70 hover:bg-black/90 text-white text-xs px-2 py-1 rounded-lg"
@@ -138,13 +146,13 @@ export default function GameScreen() {
         <MiniMap onGuess={handleGuess} disabled={!!result} />
       </div>
 
-      {/* Submit button bottom left */}
+      {/* Submit button bottom left — smaller on mobile */}
       {!result && (
-        <div className="absolute bottom-4 left-4 z-30 flex flex-col gap-2">
+        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-30 flex flex-col gap-1.5 sm:gap-2">
           <button
             onClick={() => submitGuess(guess)}
             disabled={!guess}
-            className={`px-5 py-3 rounded-xl font-bold text-white text-sm shadow-xl transition-all ${
+            className={`px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-xl font-bold text-white text-xs sm:text-sm shadow-xl transition-all ${
               guess
                 ? "bg-green-600 hover:bg-green-500 active:scale-95"
                 : "bg-gray-700 opacity-50 cursor-not-allowed"
