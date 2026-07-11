@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { LatLng, RoundResult } from "@/types/game";
 import { getRandomLocations, Location } from "@/lib/locations";
@@ -55,11 +55,34 @@ export default function GameScreen() {
   const [results, setResults] = useState<RoundResult[]>([]);
   const [timerKey, setTimerKey] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [mapExpanded, setMapExpanded] = useState(true);
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const roundStartRef = useRef(Date.now());
   const guessRef = useRef<LatLng | null>(null);
 
   const currentLocation = locations[round];
+
+  // Detect mobile on mount — start map collapsed on mobile, expanded on desktop
+  useEffect(() => {
+    const mobile = window.innerWidth < 640;
+    setIsMobile(mobile);
+    setMapExpanded(!mobile);
+  }, []);
+
+  // Reset map to collapsed on mobile between rounds
+  const handleNext = () => {
+    if (round + 1 >= TOTAL_ROUNDS) {
+      setGameOver(true);
+    } else {
+      setRound((r) => r + 1);
+      setGuess(null);
+      guessRef.current = null;
+      setResult(null);
+      setTimerKey((k) => k + 1);
+      roundStartRef.current = Date.now();
+      if (isMobile) setMapExpanded(false);
+    }
+  };
 
   const handleGuess = (latlng: LatLng) => {
     guessRef.current = latlng;
@@ -90,34 +113,28 @@ export default function GameScreen() {
     submitGuess(guessRef.current);
   }, [submitGuess]);
 
-  const handleNext = () => {
-    if (round + 1 >= TOTAL_ROUNDS) {
-      setGameOver(true);
-    } else {
-      setRound((r) => r + 1);
-      setGuess(null);
-      guessRef.current = null;
-      setResult(null);
-      setTimerKey((k) => k + 1);
-      roundStartRef.current = Date.now();
-    }
-  };
-
   if (gameOver) return <FinalScreen results={results} onRestart={() => window.location.reload()} />;
+
+  // Map dimensions — much smaller on mobile when collapsed
+  const mapStyle = mapExpanded
+    ? { width: "min(92vw, 520px)", height: "min(58vh, 420px)" }
+    : isMobile
+    ? { width: "140px", height: "110px" }       // tiny thumbnail on mobile
+    : { width: "min(55vw, 280px)", height: "min(35vh, 200px)" }; // normal shrunk on desktop
 
   return (
     <div className="relative w-screen h-screen bg-gray-950 overflow-hidden">
 
-      {/* Street View */}
+      {/* Street View — fills whole screen */}
       <div className="absolute inset-0">
         <MapillaryViewer location={currentLocation} />
       </div>
 
       {/* Top HUD */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/70 to-transparent">
-        <div className="text-white font-bold text-sm">🌍 GeoGuess Ethiopia</div>
-        <div className="text-gray-300 text-sm">Round {round + 1} / {TOTAL_ROUNDS}</div>
-        <div className="w-40">
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 bg-gradient-to-b from-black/70 to-transparent">
+        <div className="text-white font-bold text-xs sm:text-sm">🌍 GeoGuess</div>
+        <div className="text-gray-300 text-xs sm:text-sm">Round {round + 1} / {TOTAL_ROUNDS}</div>
+        <div className="w-28 sm:w-40">
           <RoundTimer
             key={timerKey}
             duration={ROUND_DURATION}
@@ -127,28 +144,35 @@ export default function GameScreen() {
         </div>
       </div>
 
-      {/* Mini map bottom right — responsive size + fades out a bit when shrunk */}
+      {/* Mini map — top-right when collapsed on mobile, bottom-right when expanded or on desktop */}
       <div
-        className={`absolute z-30 transition-all duration-300 ease-in-out bottom-3 right-3 sm:bottom-4 sm:right-4 ${
-          mapExpanded ? "opacity-100" : "opacity-60 hover:opacity-95"
+        className={`absolute z-30 transition-all duration-300 ease-in-out ${
+          mapExpanded
+            ? "bottom-3 right-3 sm:bottom-4 sm:right-4"
+            : isMobile
+            ? "top-14 right-3"
+            : "bottom-3 right-3 sm:bottom-4 sm:right-4"
         }`}
-        style={{
-          width: mapExpanded ? "min(90vw, 520px)" : "min(55vw, 280px)",
-          height: mapExpanded ? "min(60vh, 420px)" : "min(35vh, 200px)",
-        }}
+        style={mapStyle}
       >
+        {/* Expand/shrink button */}
         <button
           onClick={() => setMapExpanded((v) => !v)}
-          className="absolute top-2 left-2 z-10 bg-black/70 hover:bg-black/90 text-white text-xs px-2 py-1 rounded-lg"
+          className="absolute top-1.5 left-1.5 z-10 bg-black/80 hover:bg-black text-white text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-md leading-tight"
         >
-          {mapExpanded ? "⊖ Shrink" : "⊕ Expand"}
+          {mapExpanded ? "⊖" : "⊕"}
         </button>
         <MiniMap onGuess={handleGuess} disabled={!!result} />
       </div>
 
-      {/* Submit button bottom left — smaller on mobile */}
+      {/* Bottom-left controls: clue + submit */}
       {!result && (
-        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-30 flex flex-col gap-1.5 sm:gap-2">
+        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-30 flex flex-col items-start gap-1.5 sm:gap-2">
+          <ClueButton
+            key={round}
+            city={currentLocation.city}
+            country={currentLocation.country}
+          />
           <button
             onClick={() => submitGuess(guess)}
             disabled={!guess}
@@ -158,15 +182,8 @@ export default function GameScreen() {
                 : "bg-gray-700 opacity-50 cursor-not-allowed"
             }`}
           >
-            {guess ? "✅ Submit Guess" : "📍 Place a pin first"}
+            {guess ? "✅ Submit" : "📍 Place a pin"}
           </button>
-
-          {/* 💡 Clue button sits right above submit */}
-          <ClueButton
-            key={round}
-            city={currentLocation.city}
-            country={currentLocation.country}
-          />
         </div>
       )}
 
